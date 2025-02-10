@@ -1,5 +1,4 @@
 import cv2
-import time
 import json
 import paho.mqtt.client as mqtt
 from ultralytics import YOLO
@@ -10,16 +9,17 @@ from ultralytics import YOLO
 MQTT_BROKER = "80.116.191.172"
 MQTT_PORT = 1883
 MQTT_KEEPALIVE = 60
-MQTT_TOPIC = "/pose/json"
+MQTT_TOPIC = "pose/json"
 
-def on_connect(client, userdata, flags, rc):
-    if rc == 0:
-        print("Connesso al broker MQTT con successo.")
-    else:
-        print(f"Connessione al broker MQTT fallita. Codice: {rc}")
+# Per MQTTv5: on_connect(client, userdata, flags, reason_code, properties)
+def on_connect(client, userdata, flags, reason_code, properties):
+    # Stampa solo se la connessione ha un problema (commenta se vuoi nascondere tutto)
+    if reason_code != 0:
+        print(f"Connessione MQTT fallita. Codice: {reason_code}")
 
-def on_disconnect(client, userdata, rc):
-    print("Disconnesso dal broker MQTT.")
+# Per MQTTv5: on_disconnect(client, userdata, reason_code, properties)
+def on_disconnect(client, userdata, reason_code, properties):
+    pass  # Nessun output
 
 def publish_keypoints_json(client, keypoints_list):
     data = {"keypoints": []}
@@ -30,30 +30,22 @@ def publish_keypoints_json(client, keypoints_list):
             "y": float(y),
             "z": 0.0
         })
-
     payload = json.dumps(data)
-    result = client.publish(MQTT_TOPIC, payload)
-    if result[0] == 0:
-        print(f"[MQTT] Pubblicato JSON su {MQTT_TOPIC}")
-    else:
-        print(f"[MQTT] ERRORE pubblicando su {MQTT_TOPIC}")
+    client.publish(MQTT_TOPIC, payload)
 
-# ==========================
-# SCRIPT PRINCIPALE
-# ==========================
 def main():
-    # 1) Carica il modello YOLOv8 Pose
-    model = YOLO("yolov8n-pose.pt")  # Modello leggero
-    model.to("cpu")  # Usa GPU se disponibile
+    # Carica il modello YOLOv8 Pose
+    model = YOLO("yolov8n-pose.pt")
+    model.to("cpu")  # Usa GPU con "cuda" se disponibile
 
-    # 2) Inizializza il client MQTT
-    client = mqtt.Client()
+    # Inizializza il client MQTT (protocollo v5)
+    client = mqtt.Client(protocol=mqtt.MQTTv5)
     client.on_connect = on_connect
     client.on_disconnect = on_disconnect
     client.connect(MQTT_BROKER, MQTT_PORT, MQTT_KEEPALIVE)
     client.loop_start()
 
-    # 3) Apri la webcam con risoluzione ridotta
+    # Apri la webcam
     cap = cv2.VideoCapture(0)
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, 320)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 240)
@@ -61,6 +53,7 @@ def main():
         print("Errore: impossibile aprire la webcam.")
         return
 
+    # Nomi keypoint YOLOv8 Pose
     keypoint_names = [
         "nose", "left_eye", "right_eye", "left_ear", "right_ear",
         "left_shoulder", "right_shoulder", "left_elbow", "right_elbow",
@@ -75,39 +68,27 @@ def main():
                 print("Errore nel leggere il frame.")
                 break
 
-            # 4) Predizione pose
-            results = model.track(frame, conf=0.5, persist=True)  # Usa il tracciamento
-            if results and results[0].keypoints is not None:
-                kpts_persona = results[0].keypoints.xy[0]  # shape: (17, 2)
-
-                # Costruisci la lista (label, (x, y))
-                keypoints_list = [
-                    (keypoint_names[i], (px, py))
-                    for i, (px, py) in enumerate(kpts_persona)
-                    if i < len(keypoint_names)
-                ]
-
-                # 5) Pubblica in formato JSON
-                if keypoints_list:
-                    publish_keypoints_json(client, keypoints_list)
-
-                # 6) Disegna i keypoint sul frame (opzionale)
-                for (lbl, (xx, yy)) in keypoints_list:
-                    cv2.circle(frame, (int(xx), int(yy)), 4, (0, 255, 0), -1)
-
-            # 7) Mostra il frame (opzionale)
-            cv2.imshow("YOLOv8 Pose", frame)
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                break
+            results = model(frame, conf=0.5)
+            if len(results) > 0:
+                result = results[0]
+                if hasattr(result, 'keypoints') and result.keypoints is not None:
+                    kpts_all = result.keypoints.xy
+                    if len(kpts_all) > 0:
+                        # Usa la prima persona rilevata
+                        kpts_persona = kpts_all[0]
+                        if kpts_persona is not None and len(kpts_persona) == 17:
+                            keypoints_list = [
+                                (keypoint_names[i], (px, py))
+                                for i, (px, py) in enumerate(kpts_persona)
+                            ]
+                            publish_keypoints_json(client, keypoints_list)
 
     except KeyboardInterrupt:
-        print("Interruzione da tastiera.")
+        pass
     finally:
         cap.release()
-        cv2.destroyAllWindows()
         client.loop_stop()
         client.disconnect()
 
 if __name__ == "__main__":
     main()
-
