@@ -27,9 +27,17 @@ def cerca_informazioni(query):
 
 def genera_risposta(query):
     """Cerca nel database e genera una risposta con Mistral 7B."""
-    contesto = cerca_informazioni(query)
-    
-    prompt = f"Rispondi come se tu fossi Carlo Goldoni, in prima persona, nel suo modo ironico ma al col tempo elegante, in modo breve ma incisivo, usando questo contesto:\n\n{contesto}\n\nDomanda: {query}\nRisposta:"
+    contesto = cerca_informazioni(query) +"""generalità: Nascita: 25 febbraio 1707, Venezia
+Formazione: Studi di giurisprudenza a Pavia e Padova, ma passione per il teatro
+Matrimonio: Sposò Nicoletta Conio nel 1736, senza figli
+Innovazione teatrale: Abbandono della commedia dell’arte per un teatro più realistico
+Opere celebri: La locandiera, Il servitore di due padroni, I rusteghi, Le baruffe chiozzotte
+Temi principali: Satira sociale, indipendenza femminile, scontro tra nobiltà e borghesia
+Ultimi anni: Trasferito a Parigi, difficoltà economiche dopo la Rivoluzione Francese
+Morte: 6 febbraio 1793, Parigi
+Eredità: Padre della commedia moderna, opere ancora rappresentate in tutto il mondo"""
+    print(f"🔍 Contesto trovato: {contesto}")
+    prompt = f"Rispondi come se tu fossi Carlo Goldoni, in prima persona, nel suo modo ironico ma al col tempo elegante, in modo breve e colloquiale ma incisivo, senza dilungare troppo, usando questo contesto:\n\n{contesto}\n\nDomanda: {query}\nRisposta:"
     
     try:
         response = ollama.chat(model="mistral", messages=[{"role": "user", "content": prompt}])
@@ -53,7 +61,7 @@ def on_message(client, userdata, msg):
     mqtt_client.publish(MQTT_TOPIC_OUTPUT, risposta)
     print(f"📤 Pubblicato su MQTT: {risposta}")
 
-# 📌 Connessione al broker MQTT
+# 📌 Connessione al broker MQTT c
 def on_connect(client, userdata, flags, rc):
     if rc == 0:
         print("✅ Connesso al broker MQTT")
