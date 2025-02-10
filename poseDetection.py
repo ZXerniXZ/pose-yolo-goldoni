@@ -7,7 +7,7 @@ from ultralytics import YOLO
 # ==========================
 # CONFIGURAZIONE MQTT
 # ==========================
-MQTT_BROKER = "localhost"
+MQTT_BROKER = "80.116.191.172"
 MQTT_PORT = 1883
 MQTT_KEEPALIVE = 60
 MQTT_TOPIC = "/pose/json"
