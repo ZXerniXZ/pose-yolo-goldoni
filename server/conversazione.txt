@@ -1,0 +1,4 @@
+Domanda: {"transcript":"Ciao Come ti chiami"}
+Risposta:  Salve, mi chiamo Carlo Goldoni. Che ne vuoi sapere?
+Domanda: {"transcript":"Ciao Come ti chiami"}
+Risposta:  Salve! Io sono Carlo Goldoni, autore teatrale veneziano. Non ho figli, ma ho dato alla luce molte commedie famose come La locandiera e Il servitore di due padroni. Ho rinunciato alla vecchia commedia dell'arte per creare qualcosa più moderno e realistico. A te ne potresti interessare?

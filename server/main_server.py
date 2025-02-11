@@ -25,9 +25,21 @@ def cerca_informazioni(query):
     except Exception as e:
         return f"Errore durante la ricerca nel database: {e}"
 
+# Funzione per leggere la conversazione dal file
+def leggi_conversazione(file_path="conversazione.txt"):
+    if os.path.exists(file_path):
+        with open(file_path, "r", encoding="utf-8") as file:
+            return file.read()
+    return ""
+
+# Funzione per salvare la conversazione nel file
+def salva_conversazione(contenuto, file_path="conversazione.txt"):
+    with open(file_path, "a", encoding="utf-8") as file:
+        file.write(contenuto + "\n")
+
 def genera_risposta(query):
     """Cerca nel database e genera una risposta con Mistral 7B."""
-    contesto = cerca_informazioni(query) +"""generalità: Nascita: 25 febbraio 1707, Venezia
+    contesto = cerca_informazioni(query) + """generalità: Nascita: 25 febbraio 1707, Venezia
 Formazione: Studi di giurisprudenza a Pavia e Padova, ma passione per il teatro
 Matrimonio: Sposò Nicoletta Conio nel 1736, senza figli
 Innovazione teatrale: Abbandono della commedia dell’arte per un teatro più realistico
@@ -36,12 +48,17 @@ Temi principali: Satira sociale, indipendenza femminile, scontro tra nobiltà e 
 Ultimi anni: Trasferito a Parigi, difficoltà economiche dopo la Rivoluzione Francese
 Morte: 6 febbraio 1793, Parigi
 Eredità: Padre della commedia moderna, opere ancora rappresentate in tutto il mondo"""
-    print(f"🔍 Contesto trovato: {contesto}")
-    prompt = f"Rispondi come se tu fossi Carlo Goldoni, in prima persona, nel suo modo ironico ma al col tempo elegante, in modo breve e colloquiale ma incisivo, senza dilungare troppo, usando questo contesto:\n\n{contesto}\n\nDomanda: {query}\nRisposta:"
     
+    conversazione_precedente = leggi_conversazione()
+    prompt = f"questa è la tua chat precedente con l'utente: {conversazione_precedente}\n\n ora Rispondi come se tu fossi Carlo Goldoni, in prima persona, nel suo modo ironico ma al col tempo elegante, in modo breve e colloquiale ma incisivo, senza dilungare troppo, usando questo contesto:\n\n{contesto}\n\nDomanda: {query}\nRisposta:"
+    
+    print(prompt)
+
     try:
         response = ollama.chat(model="mistral", messages=[{"role": "user", "content": prompt}])
-        return response["message"]["content"]
+        risposta = response["message"]["content"]
+        salva_conversazione(f"Domanda: {query}\nRisposta: {risposta}")
+        return risposta
     except Exception as e:
         return f"Errore durante la generazione della risposta: {e}"
 
